@@ -1,0 +1,221 @@
+\documentclass[12pt, a4paper]{article}
+
+% --- Pacotes Básicos ---
+\usepackage[utf8]{inputenc}       % Codificação do arquivo fonte
+\usepackage[T1]{fontenc}          % Codificação da fonte de saída
+\usepackage[brazilian]{babel}        % Idioma do documento
+\usepackage{amsmath, amssymb}     % Pacotes matemáticos da AMS
+\usepackage{graphicx}             % Para inclusão de figuras
+\usepackage{booktabs}             % Para tabelas mais limpas
+\usepackage{listings}             % Para blocos de código
+\usepackage{xcolor}               % Para colorizar o código
+\usepackage{geometry}             % Configuração das margens
+\geometry{letterpaper, margin=25mm}
+
+% --- Configuração de Cores para Código ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% --- Configurações Extras ---
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{1.5em}
+
+\title{\textbf{O Método de Otsu para Processamento de Imagens}}
+\author{Engenharia Clínica e Processamento Digital de Imagens}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+O \textbf{Método de Otsu} é um algoritmo clássico e extremamente elegante de \textit{limiarização global automática} (\textit{automatic global thresholding}) no processamento de imagens. Proposto por Nobuyuki Otsu em 1979, o seu grande mérito é determinar o limiar ideal ($k$) baseado puramente na estatística do histograma da imagem, sem necessidade de intervenção humana.
+
+A intuição por trás do método é simples: ele busca o limiar que divide o histograma da imagem em \textbf{duas classes} (fundo e objeto) de forma que essas duas classes fiquem o mais separadas/distintas possível. Matematicamente, isso é feito de duas maneiras equivalentes: \textbf{minimizando a variância dentro das classes} ou \textbf{maximizando a variância entre as classes}.
+
+Focaremos na \textbf{maximização da variância entre as classes} ($\sigma_B^2$), que é o caminho computacionalmente mais eficiente.
+
+---
+
+\section{A Estatística do Histograma}
+
+Considere uma imagem digital em tons de cinza com $L$ níveis de cinza (normalmente $L = 256$, variando de $0$ a $255$). O número de pixels com o nível de cinza $i$ é denotado por $n_i$. O número total de pixels na imagem é dado por $N$.
+
+Primeiro, normalizamos o histograma para obter a \textbf{função de probabilidade} de cada nível de cinza:
+\begin{equation}
+    p_i = \frac{n_i}{N}, \quad p_i \ge 0, \quad \sum_{i=0}^{L-1} p_i = 1
+\end{equation}
+
+Se escolhermos um limiar $k$ (onde $0 \le k < L-1$), dividimos os pixels da imagem em duas classes distintas:
+\begin{itemize}
+    \item \textbf{$C_0$ (Fundo):} Pixels com níveis de cinza no intervalo $[0, k]$.
+    \item \textbf{$C_1$ (Objeto):} Pixels com níveis de cinza no intervalo $[k+1, L-1]$.
+\end{itemize}
+
+---
+
+\section{Pesos e Médias das Classes}
+
+Para avaliar a qualidade do limiar $k$, precisamos calcular a probabilidade de ocorrência (peso) e a média ponderada de cada classe.
+
+\subsection{Probabilidades (Pesos) das Classes}
+As probabilidades $\omega_0(k)$ e $\omega_1(k)$ indicam a proporção de pixels que pertencem a $C_0$ e $C_1$, respectivamente:
+\begin{equation}
+    \omega_0(k) = \sum_{i=0}^{k} p_i
+\end{equation}
+\begin{equation}
+    \omega_1(k) = \sum_{i=k+1}^{L-1} p_i = 1 - \omega_0(k)
+\end{equation}
+
+\subsection{Médias das Classes}
+A média dos níveis de cinza para cada classe, denotadas por $\mu_0(k)$ e $\mu_1(k)$, são calculadas como:
+\begin{equation}
+    \mu_0(k) = \sum_{i=0}^{k} \frac{i \cdot p_i}{\omega_0(k)}
+\end{equation}
+\begin{equation}
+    \mu_1(k) = \sum_{i=k+1}^{L-1} \frac{i \cdot p_i}{\omega_1(k)}
+\end{equation}
+
+\subsection{Média Global da Imagem}
+A média de intensidade de toda a imagem ($\mu_T$) é constante e independente do limiar $k$:
+\begin{equation}
+    \mu_T = \sum_{i=0}^{L-1} i \cdot p_i
+\end{equation}
+
+É fácil demonstrar a seguinte relação fundamental entre as médias:
+\begin{equation}
+    \omega_0(k)\mu_0(k) + \omega_1(k)\mu_1(k) = \mu_T
+\end{equation}
+
+---
+
+\section{O Critério de Otimização (A Variância Entre Classes)}
+
+Otsu definiu que o limiar ideal $k^*$ é aquele que maximiza a \textbf{variância entre as classes} ($\sigma_B^2$). A variância mede a dispersão; maximizá-la entre as classes significa forçar a média do fundo e a média do objeto a ficarem o mais distantes possível uma da outra.
+
+A fórmula matemática para a variância entre classes é:
+\begin{equation}
+    \sigma_B^2(k) = \omega_0(k)(\mu_0(k) - \mu_T)^2 + \omega_1(k)(\mu_1(k) - \mu_T)^2
+\end{equation}
+
+Substituindo a relação da média global ($\mu_T$) na equação acima e simplificando algebricamente, chegamos a uma forma muito mais elegante e computacionalmente vantajosa:
+\begin{equation}
+    \sigma_B^2(k) = \omega_0(k)\omega_1(k) \left[ \mu_0(k) - \mu_1(k) \right]^2
+\end{equation}
+
+Como $\omega_1(k) = 1 - \omega_0(k)$, podemos reescrever tudo em função de $C_0$ e da média acumulada até $k$, o que evita recalcular o somatório de $C_1$ a cada iteração do algoritmo.
+
+---
+
+\section{O Algoritmo na Prática}
+
+O algoritmo de Otsu funciona por \textbf{força bruta inteligente}. Como o número de níveis de cinza ($L$) é pequeno (geralmente 256), o computador pode testar todos os valores possíveis de $k$ de forma extremamente rápida.
+
+\begin{enumerate}
+    \item Calcula o histograma e as probabilidades $p_i$ da imagem.
+    \item Prepara as variáveis acumuladas e calcula a média global $\mu_T$.
+    \item Para cada valor possível de limiar $k$ de $0$ a $L-1$:
+    \begin{itemize}
+        \item Atualiza $\omega_0(k)$ e $\mu_0(k)$.
+        \item Calcula $\omega_1(k)$ e $\mu_1(k)$.
+        \item Calcula a variância entre classes $\sigma_B^2(k)$.
+    \end{itemize}
+    \item O limiar ótimo $k^*$ será aquele que resultou no maior $\sigma_B^2(k)$:
+\end{enumerate}
+
+\begin{equation}
+    k^* = \arg\max_{0 \le k < L-1} \sigma_B^2(k)
+\end{equation}
+
+---
+
+\section{Tratamento de Múltiplos Valores Máximos}
+
+Quando o algoritmo encontra mais de um valor de $k$ que maximiza a variância entre as classes ($\sigma_B^2$), significa que o histograma da imagem possui um ``platô'' de variância máxima. Isso ocorre quando existe um vale plano e bem definido entre os dois picos principais do histograma. Existem duas abordagens principais para resolver esse impasse:
+
+\subsection{A Abordagem Clássica (Média dos Limiares)}
+A recomendação matemática original de Otsu é calcular a \textbf{média aritmética} de todos os valores de $k$ que atingiram o valor máximo de variância. Se os limiares ótimos formam um conjunto $K^* = \{k_1, k_2, \dots, k_m\}$, o limiar final escolhido será:
+
+\begin{equation}
+    k^* = \frac{1}{m} \sum_{j=1}^{m} k_j
+\end{equation}
+
+Essa abordagem posiciona o corte exatamente no centro geométrico do vale do histograma, garantindo estabilidade estatística.
+
+\subsection{A Abordagem Prática (Primeiro Encontrado)}
+Por questões de otimização de performance, muitas bibliotecas consagradas de processamento de imagens (como OpenCV e Scikit-Image) adotam uma estratégia direta: \textbf{mantêm o primeiro valor máximo encontrado} (o menor índice $k$).
+
+\begin{lstlisting}[language=Python, caption={Lógica de atribuição padrão em bibliotecas.}]
+# Abordagem comum (Fica com o primeiro maximo)
+if var_entre_classes > max_var:
+    max_var = var_entre_classes
+    limiar_otimo = k
+\end{lstlisting}
+
+Como o operador utilizado é o maior estrito ($>$), quaisquer picos subsequentes com o mesmo valor exato de variância máxima são ignorados. Para sistemas de tempo real, a diferença visual no resultado binarizado costuma ser imperceptível, tornando essa escolha a mais eficiente.
+
+---
+
+\section{Exemplo Numérico Simplificado}
+
+Para fixar o conceito, imagine uma imagem hipotética minúscula com apenas \textbf{6 pixels} e apenas \textbf{4 níveis de cinza} ($0, 1, 2, 3$).
+
+\begin{itemize}
+    \item \textbf{Histograma} (contagem de pixels por nível):
+    $n_0 = 2$, $n_1 = 1$, $n_2 = 1$, $n_3 = 2 \quad \Rightarrow \quad N = 6$
+    \item \textbf{Probabilidades} ($p_i$):
+    $p_0 = \frac{2}{6}$, $p_1 = \frac{1}{6}$, $p_2 = \frac{1}{6}$, $p_3 = \frac{2}{6}$
+    \item \textbf{Média Global} ($\mu_T$):
+    \[ \mu_T = \left(0 \cdot \frac{2}{6}\right) + \left(1 \cdot \frac{1}{6}\right) + \left(2 \cdot \frac{1}{6}\right) + \left(3 \cdot \frac{2}{6}\right) = \frac{0 + 1 + 2 + 6}{6} = \frac{9}{6} = 1.5 \]
+\end{itemize}
+
+Vamos testar o limiar \textbf{$k = 1$} (Classe $C_0 = \{0, 1\}$ e Classe $C_1 = \{2, 3\}$):
+
+\begin{enumerate}
+    \item \textbf{Pesos:}
+    \[ \omega_0 = p_0 + p_1 = \frac{2}{6} + \frac{1}{6} = \frac{3}{6} = 0.5 \]
+    \[ \omega_1 = 1 - 0.5 = 0.5 \]
+    
+    \item \textbf{Médias das Classes:}
+    \[ \mu_0 = \frac{(0 \cdot p_0) + (1 \cdot p_1)}{\omega_0} = \frac{0 + \frac{1}{6}}{0.5} = \frac{1}{3} \approx 0.333 \]
+    \[ \mu_1 = \frac{(2 \cdot p_2) + (3 \cdot p_3)}{\omega_1} = \frac{\frac{2}{6} + \frac{6}{6}}{0.5} = \frac{\frac{8}{6}}{0.5} = \frac{8}{3} \approx 2.667 \]
+    
+    \item \textbf{Variância Entre Classes $\sigma_B^2(1)$:}
+    \[ \sigma_B^2(1) = 0.5 \cdot 0.5 \cdot (0.333 - 2.667)^2 = 0.25 \cdot (-2.334)^2 \approx 1.362 \]
+\end{enumerate}
+
+O algoritmo repetiria esse cálculo para $k=0$ e $k=2$. O valor de $k$ que maximizar $\sigma_B^2(k)$ será o escolhido.
+
+---
+
+\section{Limitações do Método}
+
+Embora seja excelente, o método de Otsu assume que a imagem possui um \textbf{histograma bimodal} (dois picos claros). Ele pode falhar se:
+\begin{itemize}
+    \item O ruído na imagem for muito alto (borrando a separação dos picos).
+    \item A iluminação for não-uniforme (gradientes de luz), onde limiares adaptativos locais funcionam melhor.
+    \item A proporção de tamanho entre o objeto e o fundo for excessivamente discrepante.
+\end{itemize}
+
+\end{document}
